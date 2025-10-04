@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// === === === Enum Data === === ===
+enum Difficulty {
+  Easy
+  Medium
+  Hard
+  Expert
+}
+
+enum Status {
+  pending
+  accepted
+}
+
+// === === === Model Master === === === 
+model ActivityType {
+  id         Int        @id @default(autoincrement())
+  name       String     @unique @db.VarChar(50)
+  activities Activity[]
+
+  @@map("activity_types")
+}
+
+model ChallengeType {
+  id         Int         @id @default(autoincrement())
+  name       String      @unique @db.VarChar(50)
+  challenges Challenge[]
+
+  @@map("challenge_types")
+}
+
+// === === === Main Model === === === 
+model User {
+  id                Int                     @id @default(autoincrement())
+  username          String                  @unique @db.VarChar(50)
+  email             String                  @unique @db.VarChar(255)
+  passwordHash      String                  @db.VarChar(255)
+  fullName          String                  @db.VarChar(100)
+  age               Int?
+  profilePictureUrl String?                 @default("/Resources/user-photo.jpg") @db.VarChar(255)
+  createdAt         DateTime                @default(now())
+  activities        Activity[]
+  createdChallenges Challenge[]             @relation("CreatedChallenges")
+  participations    ChallengeParticipant[]
+  personalBests     UserPersonalBests?
+
+  @@map("users")
+}
+
+model Activity {
+  id                 Int          @id @default(autoincrement())
+  userId             Int
+  activityTypeId     Int
+  title              String       @db.VarChar(150)
+  distance           Decimal      @db.Decimal(10, 2)
+  duration           DateTime     @db.Time
+  caloriesBurned     Int?
+  averagePace        Decimal?     @db.Decimal(5, 2)
+  activityTimestamp  DateTime     @db.DateTime
+  isPublic           Boolean      @default(true)
+  createdAt          DateTime     @default(now())
+  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activityType       ActivityType @relation(fields: [activityTypeId], references: [id])
+
+  @@map("activities")
+}
+
+model Challenge {
+  id                 Int                    @id @default(autoincrement())
+  createdByUserId    Int
+  challengeTypeId    Int
+  title              String                 @db.VarChar(150)
+  description        String?                @db.Text
+  difficulty         Difficulty
+  targetValue        Decimal                @db.Decimal(10, 2)
+  unit               String                 @db.VarChar(20)
+  startDate          DateTime               @db.DateTime
+  endDate            DateTime               @db.DateTime
+  rewardPoints       Int?
+  badgeUrl           String?                @db.VarChar(255)
+  isPublic           Boolean                @default(true)
+  createdAt          DateTime               @default(now())
+  creator            User                   @relation("CreatedChallenges", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  challengeType      ChallengeType          @relation(fields: [challengeTypeId], references: [id])
+  participants       ChallengeParticipant[]
+
+  @@map("challenges")
+}
+
+// === === === Model Relational === === === 
+model ChallengeParticipant {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  challengeId Int
+  progress    Decimal   @default(0.00) @db.Decimal(10, 2)
+  joinedAt    DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, challengeId], name: "user_challenge_unique")
+  @@map("challenge_participants")
+}
+
+model UserPersonalBests {
+  userId               Int       @id
+  longestDistance      Decimal?  @db.Decimal(10, 2)
+  longestDuration      DateTime? @db.Time
+  fastestSpeed         Decimal?  @db.Decimal(5, 2)
+  mostCaloriesBurned   Int?
+  lastUpdated          DateTime  @updatedAt
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_personal_bests")
+}
+
