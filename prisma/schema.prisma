@@ -86,6 +86,7 @@ model Challenge {
   endDate            DateTime               @db.DateTime
   rewardPoints       Int?
   badgeUrl           String?                @db.VarChar(255)
+  maxParticipants    Int?
   isPublic           Boolean                @default(true)
   createdAt          DateTime               @default(now())
   creator            User                   @relation("CreatedChallenges", fields: [createdByUserId], references: [id], onDelete: Cascade)
