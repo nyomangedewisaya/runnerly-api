@@ -41,8 +41,9 @@ CREATE TABLE `activities` (
     `distance` DECIMAL(10, 2) NOT NULL,
     `duration` TIME NOT NULL,
     `caloriesBurned` INTEGER NULL,
-    `averagePace` DECIMAL(5, 2) NULL,
     `activityTimestamp` DATETIME NOT NULL,
+    `averageSpeed` DOUBLE NULL,
+    `averagePace` VARCHAR(191) NULL,
     `isPublic` BOOLEAN NOT NULL DEFAULT true,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
@@ -63,6 +64,7 @@ CREATE TABLE `challenges` (
     `endDate` DATETIME NOT NULL,
     `rewardPoints` INTEGER NULL,
     `badgeUrl` VARCHAR(255) NULL,
+    `maxParticipants` INTEGER NULL,
     `isPublic` BOOLEAN NOT NULL DEFAULT true,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
@@ -93,18 +95,6 @@ CREATE TABLE `user_personal_bests` (
     PRIMARY KEY (`userId`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- CreateTable
-CREATE TABLE `friendships` (
-    `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `userId` INTEGER NOT NULL,
-    `followingUserId` INTEGER NOT NULL,
-    `status` ENUM('pending', 'accepted') NOT NULL DEFAULT 'accepted',
-    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-
-    UNIQUE INDEX `friendships_userId_followingUserId_key`(`userId`, `followingUserId`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
 -- AddForeignKey
 ALTER TABLE `activities` ADD CONSTRAINT `activities_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -125,9 +115,3 @@ ALTER TABLE `challenge_participants` ADD CONSTRAINT `challenge_participants_chal
 
 -- AddForeignKey
 ALTER TABLE `user_personal_bests` ADD CONSTRAINT `user_personal_bests_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `friendships` ADD CONSTRAINT `friendships_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `friendships` ADD CONSTRAINT `friendships_followingUserId_fkey` FOREIGN KEY (`followingUserId`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;

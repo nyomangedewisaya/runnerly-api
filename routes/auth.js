@@ -8,14 +8,16 @@ const prisma = new PrismaClient();
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
-  const { email, password, fullName, age, username } = req.body;
+  const { email, password, fullName, username } = req.body;
 
-  if (!email ||!age || !password || !fullName || !username) {
-    return res.status(400).json({ message: 'All data must be filled' });
+  if (!email || !password || !fullName || !username || !req.body.age) {
+    return res.status(400).json({ message: 'All data including age must be filled' });
   }
 
-  if (age && parseInt(age) <= 13) {
-    return res.status(400).json({ message: 'Your age must be more than 13 years old to register.' });
+  const age = parseInt(req.body.age);
+
+  if (isNaN(age) || age <= 13) {
+    return res.status(400).json({ message: 'Your age must be a valid number and more than 13 years old.' });
   }
 
   try {
@@ -26,18 +28,21 @@ router.post('/register', async (req, res) => {
         email,
         passwordHash: hashedPassword,
         fullName,
-        age
+        age,
       },
     });
 
     const { passwordHash, ...userWithoutPassword } = newUser;
     res.status(201).json({
-      message: 'Registrasi berhasil',
+      message: 'Registration successful',
       user: userWithoutPassword,
     });
   } catch (error) {
     if (error.code === 'P2002') {
-      return res.status(409).json({ message: `Error: ${error.meta.target.join(', ')} already used.` });
+      const target = Array.isArray(error.meta.target)
+        ? error.meta.target.join(', ')
+        : error.meta.target;
+      return res.status(409).json({ message: `Error: ${target} already used.` });
     }
     console.error(error);
     res.status(500).json({ message: 'Error server connection' });

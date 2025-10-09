@@ -85,19 +85,38 @@ router.get('/stats', isLogin, async (req, res) => {
     });
     
     const totalDurationInHours = totalDurationMs / (1000 * 60 * 60);
-    const averagePace = totalDurationInHours > 0 ? (totalDistance / totalDurationInHours).toFixed(2) : 0;
-    const personalBests = {
-        longestDistance: personalBestsRaw.longestDistance,
-        fastestSpeed: personalBestsRaw.fastestSpeed,
-        longestDuration: formatDuration(personalBestsRaw.longestDuration),
-        mostCalories: personalBestsRaw.mostCaloriesBurned,
-    };
+    const totalDurationInMinutes = totalDurationMs / (1000 * 60);
+    let averagePaceMinutesPerKm = 0;
+    let averagePaceString = "00:00";
+
+    if (totalDistance > 0) {
+      const paceDecimal = totalDurationInMinutes / totalDistance; 
+      const paceMinutes = Math.floor(paceDecimal);
+      const paceSeconds = Math.round((paceDecimal - paceMinutes) * 60);
+      averagePaceMinutesPerKm = paceDecimal;
+      averagePaceString = `${String(paceMinutes).padStart(2, '0')}:${String(paceSeconds).padStart(2, '0')}`;
+    }
+
+    const personalBests = personalBestsRaw
+      ? {
+          longestDistance: personalBestsRaw.longestDistance ?? 0,
+          fastestSpeed: personalBestsRaw.fastestSpeed ?? 0,
+          longestDuration: formatDuration(personalBestsRaw.longestDuration ?? new Date('1970-01-01T00:00:00Z')),
+          mostCalories: personalBestsRaw.mostCaloriesBurned ?? 0,
+        }
+      : {
+          longestDistance: 0,
+          fastestSpeed: 0,
+          longestDuration: "00:00:00",
+          mostCalories: 0,
+        };
     const recentActivities = userActivities.slice(0, 5).map(transformActivity);
     const stats = {
       totalActivities: userActivities.length,
       totalDistance: parseFloat(totalDistance.toFixed(2)),
       totalDuration: formatTotalDuration(totalDurationMs),
-      averagePace: parseFloat(averagePace),
+      averageSpeed: parseFloat((totalDistance / totalDurationInHours).toFixed(2)), 
+      averagePace: averagePaceString, 
       totalCalories: totalCalories,
       thisWeekDistance: 0, 
       thisMonthDistance: 0,
@@ -150,41 +169,54 @@ router.get('/:id', isLogin, async (req, res) => {
 });
 
 // POST /api/activities
-router.post('/', isLogin, async (req, res) => {
+router.post('/', async (req, res) => {
   const { userId, date, distance, duration } = req.body;
 
   if (!userId || !distance || !duration || !duration.time) {
-    return res.status(400).json({ message: 'userId, distance, dan duration (with time) must be filled' });
+    return res.status(400).json({ message: 'userId, distance, dan duration (dengan time) wajib diisi' });
   }
 
   try {
     const runningType = await prisma.activityType.findFirst({ where: { name: 'Running' } });
-
     if (!runningType) {
-      return res.status(500).json({ message: 'ActivityType "Running" not found.' });
+      return res.status(500).json({ message: 'ActivityType "Running" tidak ditemukan.' });
     }
-    
-    const durationInHours = (new Date(`1970-01-01T${duration.time}Z`).getTime() / (1000 * 60 * 60));
-    const averagePace = parseFloat((distance / durationInHours).toFixed(2));
-    const calories = Math.floor(distance * 65);
+
+    const [hours, minutes, seconds] = duration.time.split(':').map(Number);
+    const totalHours = hours + (minutes / 60) + (seconds / 3600);
+    const totalMinutes = hours * 60 + minutes + (seconds / 60);
+    const numericDistance = parseFloat(distance);
+    const speedKmh = totalHours > 0 ? (numericDistance / totalHours) : 0;
+    const paceDecimal = numericDistance > 0 ? (totalMinutes / numericDistance) : 0;
+    const paceMinutes = Math.floor(paceDecimal);
+    const paceSeconds = Math.round((paceDecimal - paceMinutes) * 60);
+    const paceString = `${String(paceMinutes).padStart(2, '0')}:${String(paceSeconds).padStart(2, '0')}`;
     const activityDate = date ? new Date(date) : new Date();
+    const calories = Math.floor(numericDistance * 65);
     const newActivity = await prisma.activity.create({
       data: {
         title: `Run on ${activityDate.toISOString().split('T')[0]}`,
-        distance: parseFloat(distance),
+        distance: numericDistance,
         duration: new Date(`1970-01-01T${duration.time}Z`),
         activityTimestamp: activityDate,
-        averagePace: averagePace,
+        averageSpeed: parseFloat(speedKmh.toFixed(2)), 
+        averagePace: paceString, 
         caloriesBurned: calories,
         userId: parseInt(userId),
         activityTypeId: runningType.id,
       },
     });
-    res.status(201).json(newActivity);
+
+    res.status(201).json({
+      ...newActivity,
+      averagePaceString: paceString,
+      averageSpeed: parseFloat(speedKmh.toFixed(2)),
+    });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Error server connection' });
+    res.status(500).json({ message: 'Terjadi kesalahan pada server' });
   }
 });
+
 
 export default router;

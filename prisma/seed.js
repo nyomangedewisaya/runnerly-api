@@ -132,26 +132,41 @@ async function main() {
   for (const user of createdUsers) {
     const numActivities = random(8, 12);
     for (let i = 0; i < numActivities; i++) {
-      const distance = parseFloat((Math.random() * (21 - 2) + 2).toFixed(2));
-      const duration = randomDuration(10, 150);
-      const durationInHours = (duration.getTime() - new Date('1970-01-01T00:00:00Z')) / (1000 * 60 * 60);
-      
+      const distance = parseFloat((Math.random() * (21 - 2) + 2).toFixed(2)); 
+      const duration = randomDuration(10, 150); 
+      const baseEpoch = new Date('1970-01-01T00:00:00Z').getTime();
+      const durationSeconds = (duration.getTime() - baseEpoch) / 1000;
+      const durationMinutes = durationSeconds / 60;
+      const durationHours = durationSeconds / 3600;
+      const speedKmh = durationHours > 0 ? (distance / durationHours) : 0;
+      const paceMinPerKm = distance > 0 ? (durationMinutes / distance) : 0;
+      let paceMinutes = Math.floor(paceMinPerKm);
+      let paceSeconds = Math.round((paceMinPerKm - paceMinutes) * 60);
+      if (paceSeconds === 60) {
+        paceMinutes += 1;
+        paceSeconds = 0;
+      }
+      const paceString = `${String(paceMinutes).padStart(2, '0')}:${String(paceSeconds).padStart(2, '0')}`;
+
       await prisma.activity.create({
         data: {
           title: ['Morning Run', 'Lunch Break Jog', 'Evening Stride', 'City Park Loop', 'Trail Exploration', 'Hill Sprints'][random(0, 5)],
           distance,
           duration,
           caloriesBurned: Math.floor(distance * 65),
-          averagePace: parseFloat((distance / durationInHours).toFixed(2)),
+          averageSpeed: parseFloat(speedKmh.toFixed(2)),
+          averagePace: paceString,
           activityTimestamp: randomDate(new Date('2025-09-01'), new Date('2025-10-05')),
           userId: user.id,
           activityTypeId: activityTypes.find(at => at.name === 'Running').id,
         },
       });
+
       totalActivities++;
     }
   }
   console.log(`✅ ${totalActivities} activities seeded.`);
+
   console.log('➕ Seeding challenge participants...');
   for (const challenge of createdChallenges) {
     const numParticipants = random(5, createdUsers.length - 1);
@@ -174,7 +189,7 @@ async function main() {
       const bests = activities.reduce((acc, act) => ({
         longestDistance: Math.max(acc.longestDistance, parseFloat(act.distance)),
         longestDuration: new Date(Math.max(acc.longestDuration.getTime(), act.duration.getTime())),
-        fastestSpeed: Math.max(acc.fastestSpeed, parseFloat(act.averagePace)),
+        fastestSpeed: Math.max(acc.fastestSpeed, parseFloat(act.averageSpeed)),
         mostCaloriesBurned: Math.max(acc.mostCaloriesBurned, act.caloriesBurned),
       }), { longestDistance: 0, longestDuration: new Date(0), fastestSpeed: 0, mostCaloriesBurned: 0 });
 

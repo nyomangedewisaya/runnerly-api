@@ -7,7 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// === === === Enum Data === === ===
 enum Difficulty {
   Easy
   Medium
@@ -20,7 +19,6 @@ enum Status {
   accepted
 }
 
-// === === === Model Master === === === 
 model ActivityType {
   id         Int        @id @default(autoincrement())
   name       String     @unique @db.VarChar(50)
@@ -37,7 +35,6 @@ model ChallengeType {
   @@map("challenge_types")
 }
 
-// === === === Main Model === === === 
 model User {
   id                Int                     @id @default(autoincrement())
   username          String                  @unique @db.VarChar(50)
@@ -63,8 +60,9 @@ model Activity {
   distance           Decimal      @db.Decimal(10, 2)
   duration           DateTime     @db.Time
   caloriesBurned     Int?
-  averagePace        Decimal?     @db.Decimal(5, 2)
   activityTimestamp  DateTime     @db.DateTime
+  averageSpeed       Float?      
+  averagePace        String? 
   isPublic           Boolean      @default(true)
   createdAt          DateTime     @default(now())
   user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -96,7 +94,6 @@ model Challenge {
   @@map("challenges")
 }
 
-// === === === Model Relational === === === 
 model ChallengeParticipant {
   id          Int       @id @default(autoincrement())
   userId      Int
